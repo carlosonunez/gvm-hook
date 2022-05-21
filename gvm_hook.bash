@@ -47,7 +47,7 @@ gvm_trigger_file_in_pwd() {
 }
 
 gvm_hook_is_active() {
-  grep -Eiq '^active$' "$GVM_HOOK_ACTIVE_FILE"
+  2>/dev/null grep -Eiq '^active$' "$GVM_HOOK_ACTIVE_FILE"
 }
 
 capture_default_gvm_version() {
