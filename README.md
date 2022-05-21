@@ -50,7 +50,7 @@ $: cd some/subdirectory/of/thing && gvm list
 
 gvm gos (installed)
 
-=> expensify-processor-go1.16
+=> sample-project-go1.16
    go1.17.1
    status-go1.17.5
    system
