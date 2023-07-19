@@ -94,11 +94,11 @@ enable_gvm_hook() {
   # gvm doesn't deduplicate these variables, which can slow down shell performance over time
   # as you go in and out of repositories.
   # shellcheck disable=SC2155
-  export LD_LIBRARY_PATH="$(tr ':' '\n' <<< "$LD_LIBRARY_PATH" | sort -u)"
+  export LD_LIBRARY_PATH="$(tr ':' '\n' <<< "$LD_LIBRARY_PATH" | sort -u | tr '\n' ':')"
   # shellcheck disable=SC2155
-  export DYLD_LIBRARY_PATH="$(tr ':' '\n' <<< "$DYLD_LIBRARY_PATH" | sort -u)"
+  export DYLD_LIBRARY_PATH="$(tr ':' '\n' <<< "$DYLD_LIBRARY_PATH" | sort -u | tr '\n' ':')"
   # shellcheck disable=SC2155
-  export PKG_CONFIG_PATH="$(tr ':' '\n' <<< "$PKG_CONFIG_PATH" | sort -u)"
+  export PKG_CONFIG_PATH="$(tr ':' '\n' <<< "$PKG_CONFIG_PATH" | sort -u | tr '\n' ':')"
 }
 
 disable_gvm_hook() {
