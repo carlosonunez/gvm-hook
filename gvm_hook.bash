@@ -5,7 +5,6 @@ export LOCAL_GVM_DIRECTORY=""
 export USING_DEFAULT_GVM=false
 export LOCAL_GVM_VERSION=""
 GVM_HOOK_CHECK_SENTINEL_FILE="$HOME/.config/gvm-hook/gvm_hook_installation_in_progress"
-GVM_HOOK_ACTIVE_FILE="$HOME/.config/gvm-hook/gvm_hook_status"
 DEFAULT_GVM_FILE="$HOME/.config/gvm-hook/default_gvm"
 
 trap 'rm -rf $GVM_HOOK_CHECK_SENTINEL_FILE' INT EXIT
@@ -46,13 +45,7 @@ gvm_trigger_file_in_pwd() {
   test -f "$(gvm_hook_trigger_file)"
 }
 
-gvm_hook_is_active() {
-  2>/dev/null grep -Eiq '^active$' "$GVM_HOOK_ACTIVE_FILE"
-}
-
 capture_default_gvm_version() {
-  gvm_hook_is_active && return 0
-
   basename "$GOROOT" > "$DEFAULT_GVM_FILE"
 }
 
@@ -62,12 +55,9 @@ verify_gvm_installed() {
 }
 
 exit_gvm_hook() {
-  if gvm_hook_is_active
-  then
-    gvm use "go$GOLANG_VERSION" >/dev/null
-    disable_gvm_hook
-    export LOCAL_GVM_NAME=""
-  fi
+  gvm use "go$GOLANG_VERSION" >/dev/null
+  disable_gvm_hook
+  export LOCAL_GVM_NAME=""
 }
 
 default_version_found() {
@@ -101,12 +91,18 @@ enable_gvm_hook() {
   export USING_DEFAULT_GVM=false
   # shellcheck disable=SC2155
   export LOCAL_GVM_VERSION="$(gvm_version_wanted)"
-  echo 'active' > "$GVM_HOOK_ACTIVE_FILE"
+  # gvm doesn't deduplicate these variables, which can slow down shell performance over time
+  # as you go in and out of repositories.
+  # shellcheck disable=SC2155
+  export LD_LIBRARY_PATH="$(tr ':' '\n' <<< "$LD_LIBRARY_PATH" | sort -u)"
+  # shellcheck disable=SC2155
+  export DYLD_LIBRARY_PATH="$(tr ':' '\n' <<< "$DYLD_LIBRARY_PATH" | sort -u)"
+  # shellcheck disable=SC2155
+  export PKG_CONFIG_PATH="$(tr ':' '\n' <<< "$PKG_CONFIG_PATH" | sort -u)"
 }
 
 disable_gvm_hook() {
   export LOCAL_GVM_VERSION=""
-  echo 'inactive' > "$GVM_HOOK_ACTIVE_FILE"
 }
 
 gvm_hook() {
@@ -118,7 +114,7 @@ before using gvm-hook."
   fi
 
   create_lock_dir_if_needed
-  if ! gvm_trigger_file_in_pwd && ! in_subdir_of_local_gvm_dir
+  if ! in_subdir_of_local_gvm_dir && ! gvm_trigger_file_in_pwd
   then
     capture_default_gvm_version
     default_version_found && revert_to_default_version
@@ -126,8 +122,9 @@ before using gvm-hook."
     export LOCAL_GVM_DIRECTORY=""
     return 0
   fi
+
+  in_subdir_of_local_gvm_dir && return 0
  
-  gvm_hook_is_active && return 0
   if ! gvm_local_file_valid
   then
     >&2 echo "ERROR: A .gvm_local file was detected, but it does not end with a 'gvm use' \
@@ -146,8 +143,9 @@ statement. Please ensure that the last line of the file starts with \
   gvm_hook_check_mutex_lock
   # shellcheck disable=SC1090
   source "$(gvm_hook_trigger_file)" &&
-    enable_gvm_hook &&
-    export LOCAL_GVM_DIRECTORY="$PWD"
+    enable_gvm_hook || return 1
+
+    test -z "$LOCAL_GVM_DIRECTORY" && export LOCAL_GVM_DIRECTORY="$PWD"
   gvm_hook_check_mutex_unlock
 }
 
