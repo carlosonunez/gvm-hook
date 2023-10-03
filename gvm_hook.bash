@@ -55,7 +55,6 @@ verify_gvm_installed() {
 }
 
 exit_gvm_hook() {
-  gvm use "go$GOLANG_VERSION" >/dev/null
   disable_gvm_hook
   export LOCAL_GVM_NAME=""
 }
@@ -114,10 +113,10 @@ before using gvm-hook."
   fi
 
   create_lock_dir_if_needed
+  # if we're not in the subdir of local gvm dir and the trigger file is not in pwd
   if ! in_subdir_of_local_gvm_dir && ! gvm_trigger_file_in_pwd
   then
-    capture_default_gvm_version
-    default_version_found && revert_to_default_version
+    revert_to_default_version
     exit_gvm_hook
     export LOCAL_GVM_DIRECTORY=""
     return 0
@@ -149,5 +148,6 @@ statement. Please ensure that the last line of the file starts with \
   gvm_hook_check_mutex_unlock
 }
 
+capture_default_gvm_version
 gvm_hook
 grep -Eiq '^true$' <<< "$IN_LOCAL_GVM" && return 0
